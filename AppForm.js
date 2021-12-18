@@ -1,5 +1,5 @@
 import { StatusBar } from "expo-status-bar";
-import React, {useState} from "react";
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -7,31 +7,50 @@ import {
   TextInput,
   TouchableOpacity,
 } from "react-native";
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import Database from "./Database";
 
-  export default function AppForm({navigation}) {
+export default function AppForm({ route, navigation }) {
+  const id = route.params ? route.params.id : undefined;
   const [descricao, setDescricao] = useState("");
   const [quantidade, setQuantidade] = useState("");
-    
-    function handleDescriptionChange(descricao) {
-      setDescricao(descricao);
-    }
-    function handleQuantityChange(quantidade) {
-      setQuantidade(quantidade);
-    }
-    async function handleButtonPress(){ 
-      const listItem = {id: new Date().getTime(), descricao, quantidade: parseInt(quantidade)};
-      let savedItems = [];
-      const response = await AsyncStorage.getItem('items');
-      
-      if(response) savedItems = JSON.parse(response);
-      savedItems.push(listItem);
-     
-      await AsyncStorage.setItem('items', JSON.stringify(savedItems));
-      navigation.navigate("AppList", listItem);
-    }
+
+  useEffect(() => {
+    if (!route.params) return;
+    setDescricao(route.params.descricao);
+    setQuantidade(route.params.quantidade.toString());
+  }, [route]);
+
+  function handleDescriptionChange(descricao) {
+    setDescricao(descricao);
+  }
+  function handleQuantityChange(quantidade) {
+    setQuantidade(quantidade);
+  }
+  async function handleButtonPress_old() {
+    const listItem = {
+      id: new Date().getTime(),
+      descricao,
+      quantidade: parseInt(quantidade),
+    };
+    let savedItems = [];
+    const response = await AsyncStorage.getItem("items");
+
+    if (response) savedItems = JSON.parse(response);
+    savedItems.push(listItem);
+
+    await AsyncStorage.setItem("items", JSON.stringify(savedItems));
+    navigation.navigate("AppList", listItem);
+  }
+
+  async function handleButtonPress() {
+    const listItem = { descricao, quantidade: parseInt(quantidade) };
+    Database.saveItem(listItem, id).then((response) =>
+      navigation.navigate("AppList", listItem)
+    );
+  }
+
   return (
-<View style={styles.container}>
+    <View style={styles.container}>
       <Text style={styles.title}>Item para comprar</Text>
       <View style={styles.inputContainer}>
         <TextInput
@@ -39,6 +58,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
           onChangeText={handleDescriptionChange}
           placeholder="O que está faltando em casa?"
           clearButtonMode="always"
+          value={descricao}
         />
         <TextInput
           style={styles.input}
@@ -46,9 +66,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
           placeholder="Digite a quantidade"
           keyboardType={"numeric"}
           clearButtonMode="always"
+          value={quantidade.toString()}
         />
- <TouchableOpacity style={styles.button}>
- <Text style={styles.buttonText} onPress={handleButtonPress}>
+        <TouchableOpacity style={styles.button}>
+          <Text style={styles.buttonText} onPress={handleButtonPress}>
             Salvar
           </Text>
         </TouchableOpacity>
@@ -57,7 +78,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
     </View>
   );
 }
- 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -102,7 +123,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 20,
     shadowColor: "#ccc",
   },
-buttonText: {
+  buttonText: {
     color: "#fff",
     fontWeight: "bold",
   },
